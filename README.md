@@ -10,6 +10,8 @@ Sistema local em Python que usa webcam para analisar proporções faciais e gera
 - Exibe uma interface web responsiva para acompanhar a leitura
 - Extrai métricas faciais com MediaPipe Face Mesh
 - Converte métricas em sugestões de sliders para FC26
+- Estima o formato do rosto e a textura/volume do cabelo quando a parte superior está visível
+- Mostra uma prévia estilizada baseada nos sliders sugeridos
 - Exporta relatório em `JSON` e `Markdown` em `output/`
 
 ## Requisitos
@@ -34,6 +36,8 @@ python main.py
 ```
 
 O navegador será aberto em `http://127.0.0.1:5000`. Permita o acesso à webcam, configure a câmera e a quantidade de amostras, clique em **INICIAR ESCANEAMENTO** e aguarde a consolidação. O painel mostra os sliders sugeridos, as métricas normalizadas e os arquivos gerados. O botão **COPIAR VALORES** copia os sliders para a área de transferência.
+
+O formato do rosto, o tipo de cabelo e a prévia são estimativas visuais. A prévia não é uma renderização oficial do FC26 e os sliders ainda precisam de ajuste manual no jogo.
 
 Para publicar no Render, conecte este repositório e use o `render.yaml` incluído. Ele instala as dependências e inicia o serviço com Gunicorn. No Render, a câmera continua sendo acessada pelo navegador do usuário; o servidor recebe os frames para análise.
 

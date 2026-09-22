@@ -17,6 +17,10 @@ const confidence = document.querySelector('#confidence');
 const serviceDot = document.querySelector('#serviceDot');
 const serviceLabel = document.querySelector('#serviceLabel');
 const toast = document.querySelector('#toast');
+const facePreview = document.querySelector('#facePreview');
+const faceShape = document.querySelector('#faceShape');
+const hairType = document.querySelector('#hairType');
+const profileNote = document.querySelector('#profileNote');
 
 const sliderLabels = {
   largura_mandibula: 'Largura da mandíbula',
@@ -199,9 +203,22 @@ function renderResult(data) {
     row.querySelector('.bar span').style.width = `${value}%`;
   });
   updateMetrics(data.metrics);
+  renderProfile(data.profile, data.sliders);
   document.querySelector('#jsonReport').textContent = `JSON  /  ${data.json_path}`;
   document.querySelector('#mdReport').textContent = `MD    /  ${data.markdown_path}`;
   copyButton.disabled = false;
+}
+
+function renderProfile(profile, sliders) {
+  if (!profile) return;
+  faceShape.textContent = profile.formato_rosto || '--';
+  hairType.textContent = profile.cabelo_estimado || '--';
+  profileNote.textContent = `${profile.observacao_cabelo || ''} ${profile.nota || ''}`.trim();
+  const width = 76 + (Number(sliders.largura_mandibula) - 50) * .16;
+  const height = 118 + (Number(sliders.altura_rosto) - 50) * .3;
+  facePreview.style.setProperty('--face-width', `${Math.max(58, Math.min(94, width))}px`);
+  facePreview.style.setProperty('--face-height', `${Math.max(100, Math.min(140, height))}px`);
+  facePreview.classList.add('has-result');
 }
 
 function updateMetrics(metrics) {

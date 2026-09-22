@@ -117,15 +117,20 @@ def _build_markdown(payload: dict) -> str:
     for note in payload["observacoes"]:
         lines.append(f"- {note}")
 
+    if payload.get("perfil_estimado"):
+        lines.extend(["", "## Perfil estimado"])
+        for key, value in payload["perfil_estimado"].items():
+            lines.append(f"- **{key}**: {value}")
+
     return "\n".join(lines)
 
 
-def save_reports(metrics: FaceMetrics, output_dir: str = "output") -> tuple[Path, Path]:
+def save_reports(metrics: FaceMetrics, output_dir: str = "output", profile: dict | None = None) -> tuple[Path, Path]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     sliders = suggest_fc26_sliders(metrics)
-    payload = build_report_payload(metrics, sliders)
+    payload = build_report_payload(metrics, sliders, profile)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     json_path = output_path / f"fc26_face_report_{timestamp}.json"
     md_path = output_path / f"fc26_face_report_{timestamp}.md"

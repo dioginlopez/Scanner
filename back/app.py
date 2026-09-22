@@ -14,12 +14,43 @@ from src.fc26_face_scanner.analyzer import _aggregate_metrics, _extract_frame_me
 from src.fc26_face_scanner.mapping import FaceMetrics, suggest_fc26_sliders
 
 
+def _estimate_face_shape(metrics: FaceMetrics) -> str:
+    ratio = metrics.face_height / max(metrics.jaw_width, 0.01)
+    if ratio >= 1.55:
+        return "Oval"
+    if ratio >= 1.35:
+        return "Alongado"
+    if ratio <= 1.15:
+        return "Redondo"
+    return "Equilibrado"
+
+
+def _estimate_hair_profile(image: np.ndarray) -> tuple[str, str]:
+    height, width = image.shape[:2]
+    crop = image[: max(1, int(height * 0.28)), int(width * 0.12): int(width * 0.88)]
+    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    texture = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    edges = cv2.Canny(gray, 70, 150)
+    edge_density = float(np.count_nonzero(edges)) / max(edges.size, 1)
+    brightness = float(np.mean(gray))
+    if brightness > 190 or edge_density < 0.015:
+        return "Não identificado", "Baixa confiança: enquadre também a parte superior do cabelo."
+    if texture < 180 and edge_density < 0.08:
+        return "Liso / baixa textura", "Estimativa visual"
+    if texture < 500 and edge_density < 0.16:
+        return "Ondulado / textura média", "Estimativa visual"
+    if texture < 1000:
+        return "Cacheado / alta textura", "Estimativa visual"
+    return "Crespo / textura muito alta", "Estimativa visual"
+
+
 class ScannerSession:
     def __init__(self) -> None:
         self.lock = threading.Lock()
         self.face_landmarker = None
         self.frame_timestamp = 0
         self.samples: list[FaceMetrics] = []
+        self.hair_profiles: list[tuple[str, str]] = []
         self.target = 45
         self.output_dir = "output"
         self.active = False
@@ -41,6 +72,7 @@ class ScannerSession:
             )
             self.face_landmarker = mp.tasks.vision.FaceLandmarker.create_from_options(options)
             self.samples = []
+            self.hair_profiles = []
             self.frame_timestamp = 0
             self.target = target
             self.output_dir = output_dir or "output"
@@ -65,6 +97,7 @@ class ScannerSession:
                 metrics = _extract_frame_metrics(result.face_landmarks[0], width, height)
                 if metrics is not None:
                     self.samples.append(metrics)
+                    self.hair_profiles.append(_estimate_hair_profile(image))
 
             count = len(self.samples)
             return {
@@ -73,6 +106,7 @@ class ScannerSession:
                 "count": count,
                 "target": self.target,
                 "percent": round(min(100, count / self.target * 100), 1),
+                "hair_profile": self.hair_profiles[-1][0] if self.hair_profiles else "Não identificado",
             }
 
     def finish(self) -> dict:
@@ -81,13 +115,23 @@ class ScannerSession:
             if len(self.samples) < threshold:
                 raise RuntimeError("Amostras insuficientes. Melhore a iluminação e centralize o rosto.")
             metrics = _aggregate_metrics(self.samples)
-            json_path, md_path = save_reports(metrics, self.output_dir)
             sliders = suggest_fc26_sliders(metrics)
+            hair_name, hair_note = ("Não identificado", "Baixa confiança: enquadre também a parte superior do cabelo.")
+            if self.hair_profiles:
+                hair_name, hair_note = max(set(self.hair_profiles), key=self.hair_profiles.count)
+            profile = {
+                "formato_rosto": _estimate_face_shape(metrics),
+                "cabelo_estimado": hair_name,
+                "observacao_cabelo": hair_note,
+                "nota": "Perfil visual aproximado; não é uma leitura oficial do FC26.",
+            }
+            json_path, md_path = save_reports(metrics, self.output_dir, profile)
             self.active = False
             self._close_landmarker()
             return {
                 "metrics": asdict(metrics),
                 "sliders": asdict(sliders),
+                "profile": profile,
                 "json_path": str(json_path),
                 "markdown_path": str(md_path),
             }

@@ -58,8 +58,8 @@ def suggest_fc26_sliders(metrics: FaceMetrics) -> Fc26Sliders:
     )
 
 
-def build_report_payload(metrics: FaceMetrics, sliders: Fc26Sliders) -> dict:
-    return {
+def build_report_payload(metrics: FaceMetrics, sliders: Fc26Sliders, profile: dict | None = None) -> dict:
+    payload = {
         "metrics_normalizadas": asdict(metrics),
         "sliders_fc26_0a100": asdict(sliders),
         "observacoes": [
@@ -68,3 +68,6 @@ def build_report_payload(metrics: FaceMetrics, sliders: Fc26Sliders) -> dict:
             "Faça ajustes finos manuais no jogo para o resultado final desejado.",
         ],
     }
+    if profile:
+        payload["perfil_estimado"] = profile
+    return payload
