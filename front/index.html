@@ -37,6 +37,7 @@
           <div class="viewport" id="viewport">
             <video id="video" autoplay muted playsinline></video>
             <canvas id="guideCanvas"></canvas>
+            <canvas id="captureCanvas" aria-hidden="true"></canvas>
             <div class="viewport-placeholder" id="placeholder">
               <div class="scan-glyph">+</div>
               <p>Ative a câmera para iniciar a leitura</p>
@@ -72,7 +73,7 @@
         </div>
 
         <div class="result-card">
-          <div class="card-heading"><div><p class="eyebrow">FC26 EDITOR</p><h3>Sliders de aparência</h3></div><span class="scale-label">0 — 100</span></div>
+          <div class="card-heading"><div><p class="eyebrow">FC26 EDITOR</p><h3>Valores para inserir</h3></div><span class="scale-label">ESCALA 0 — 100</span></div>
           <div class="slider-list" id="sliderList"></div>
           <button class="copy-button" id="copyButton" disabled><span>↗</span> COPIAR VALORES</button>
         </div>

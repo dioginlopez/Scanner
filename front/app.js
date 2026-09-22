@@ -1,5 +1,5 @@
 const video = document.querySelector('#video');
-const canvas = document.querySelector('#guideCanvas');
+const captureCanvas = document.querySelector('#captureCanvas');
 const cameraSelect = document.querySelector('#cameraSelect');
 const sampleInput = document.querySelector('#sampleInput');
 const outputInput = document.querySelector('#outputInput');
@@ -23,8 +23,8 @@ const hairType = document.querySelector('#hairType');
 const profileNote = document.querySelector('#profileNote');
 
 const sliderLabels = {
-  largura_mandibula: 'Largura da mandíbula',
-  altura_rosto: 'Altura do rosto',
+  largura_mandibula: 'Largura do maxilar',
+  altura_rosto: 'Altura da testa / rosto',
   largura_nariz: 'Largura do nariz',
   comprimento_nariz: 'Comprimento do nariz',
   espessura_labios: 'Espessura dos lábios',
@@ -32,7 +32,7 @@ const sliderLabels = {
   altura_sobrancelha: 'Altura da sobrancelha',
 };
 const metricLabels = {
-  jaw_width: 'Mandíbula', face_height: 'Rosto', nose_width: 'Nariz',
+  jaw_width: 'Maxilar', face_height: 'Testa / rosto', nose_width: 'Nariz',
   nose_length: 'Nariz (compr.)', lip_fullness: 'Lábios', eye_size: 'Olhos', brow_height: 'Sobrancelha',
 };
 
@@ -41,6 +41,7 @@ let captureTimer = null;
 let scanning = false;
 let lastSliders = null;
 let toastTimer = null;
+let captureInFlight = false;
 
 function setServiceReady() {
   serviceDot.classList.add('ready');
@@ -122,13 +123,13 @@ async function startScanner() {
     return;
   }
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: cameraSelect.value }, width: { ideal: 960 }, height: { ideal: 720 } }, audio: false });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: cameraSelect.value }, width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 24, max: 30 } }, audio: false });
     video.srcObject = stream;
     await video.play();
     placeholder.classList.add('hidden');
     video.classList.add('visible');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    captureCanvas.width = 480;
+    captureCanvas.height = 360;
     const response = await fetch('/api/session/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ samples, output_dir: outputInput.value.trim() }) });
     const data = await readApiResponse(response);
     setRunning(true);
@@ -143,13 +144,13 @@ async function startScanner() {
 }
 
 function captureNextFrame() {
-  if (!scanning) return;
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
-  const context = canvas.getContext('2d');
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-  canvas.toBlob(async blob => {
+  if (!scanning || captureInFlight) return;
+  captureInFlight = true;
+  const context = captureCanvas.getContext('2d');
+  context.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+  captureCanvas.toBlob(async blob => {
     if (!scanning || !blob) return;
+    captureInFlight = false;
     try {
       const body = new FormData();
       body.append('frame', blob, 'frame.jpg');
@@ -164,8 +165,10 @@ function captureNextFrame() {
       stopScanner(false);
       showToast(error.message);
       return;
+    } finally {
+      captureInFlight = false;
     }
-    captureTimer = setTimeout(captureNextFrame, 180);
+    captureTimer = setTimeout(captureNextFrame, 220);
   }, 'image/jpeg', .82);
 }
 
