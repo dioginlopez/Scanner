@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FC26 Face Scanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="brand-mark">F</div>
+        <div>
+          <p class="eyebrow">FACIAL DATA LAB <span></span> LOCAL MODE</p>
+          <h1>FC26 <strong>Face Scanner</strong></h1>
+        </div>
+      </div>
+      <div class="system-state"><i id="serviceDot"></i><span id="serviceLabel">SISTEMA PRONTO</span></div>
+    </header>
+
+    <main class="workspace">
+      <section class="capture-column">
+        <div class="section-heading">
+          <div><p class="eyebrow">01 / CAPTURE</p><h2>Mapeamento facial</h2></div>
+          <div class="session-badge" id="sessionBadge">IDLE</div>
+        </div>
+
+        <div class="camera-card">
+          <div class="camera-toolbar">
+            <span class="live-indicator"><i id="liveDot"></i><span id="cameraState">CÂMERA DESATIVADA</span></span>
+            <span class="sample-readout" id="sampleReadout">0 / 45 SAMPLES</span>
+          </div>
+          <div class="viewport" id="viewport">
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="guideCanvas"></canvas>
+            <div class="viewport-placeholder" id="placeholder">
+              <div class="scan-glyph">+</div>
+              <p>Ative a câmera para iniciar a leitura</p>
+              <small>Seu rosto permanece no dispositivo durante a análise</small>
+            </div>
+            <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+          </div>
+          <div class="capture-footer">
+            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            <p id="statusText">Aguardando configuração</p>
+            <div class="footer-actions">
+              <button class="button button-primary" id="startButton"><span class="button-icon">◉</span> INICIAR ESCANEAMENTO</button>
+              <button class="button button-quiet" id="stopButton" disabled><span class="button-icon">■</span> PARAR</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tip-strip"><span class="tip-icon">i</span><p><strong>Para uma leitura precisa:</strong> luz frontal uniforme, rosto centralizado e expressão neutra.</p></div>
+
+        <div class="settings-panel">
+          <div class="panel-label"><span>CONFIGURAÇÃO</span><small>AJUSTE ANTES DE CAPTURAR</small></div>
+          <label>CÂMERA <select id="cameraSelect"><option value="">Selecione uma câmera</option></select></label>
+          <label>AMOSTRAS <input id="sampleInput" type="number" min="10" max="300" value="45"></label>
+          <label>PASTA <input id="outputInput" type="text" value="output"></label>
+        </div>
+      </section>
+
+      <aside class="results-column">
+        <div class="section-heading">
+          <div><p class="eyebrow">02 / OUTPUT</p><h2>Perfil sugerido</h2></div>
+          <span class="confidence" id="confidence">SEM DADOS</span>
+        </div>
+
+        <div class="result-card">
+          <div class="card-heading"><div><p class="eyebrow">FC26 EDITOR</p><h3>Sliders de aparência</h3></div><span class="scale-label">0 — 100</span></div>
+          <div class="slider-list" id="sliderList"></div>
+          <button class="copy-button" id="copyButton" disabled><span>↗</span> COPIAR VALORES</button>
+        </div>
+
+        <div class="metrics-card">
+          <div class="card-heading"><div><p class="eyebrow">RAW MEASUREMENTS</p><h3>Métricas normalizadas</h3></div><span class="metric-unit">RATIO</span></div>
+          <div class="metric-grid" id="metricGrid"></div>
+        </div>
+
+        <div class="reports-card">
+          <p class="eyebrow">REPORTS</p>
+          <div class="report-line"><span class="file-icon">{ }</span><span id="jsonReport">JSON aguardando análise</span></div>
+          <div class="report-line"><span class="file-icon">#</span><span id="mdReport">MARKDOWN aguardando análise</span></div>
+        </div>
+      </aside>
+    </main>
+    <footer><span>FC26 FACE SCANNER / v1.0</span><span>ANÁLISE LOCAL <i></i> SEM INTEGRAÇÃO OFICIAL COM O JOGO</span></footer>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
