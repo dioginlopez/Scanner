@@ -3,6 +3,7 @@ from __future__ import annotations
 import threading
 from dataclasses import asdict
 from pathlib import Path
+from urllib.request import urlretrieve
 
 import cv2
 import mediapipe as mp
@@ -16,7 +17,8 @@ from src.fc26_face_scanner.mapping import FaceMetrics, suggest_fc26_sliders
 class ScannerSession:
     def __init__(self) -> None:
         self.lock = threading.Lock()
-        self.face_mesh = None
+        self.face_landmarker = None
+        self.frame_timestamp = 0
         self.samples: list[FaceMetrics] = []
         self.target = 45
         self.output_dir = "output"
@@ -26,33 +28,41 @@ class ScannerSession:
         if target < 10:
             raise ValueError("A quantidade mínima é de 10 amostras.")
         with self.lock:
-            self._close_mesh()
-            self.face_mesh = mp.solutions.face_mesh.FaceMesh(
-                static_image_mode=False,
-                max_num_faces=1,
-                refine_landmarks=True,
-                min_detection_confidence=0.6,
+            self._close_landmarker()
+            model_path = _ensure_face_model()
+            base_options = mp.tasks.BaseOptions(model_asset_path=str(model_path))
+            options = mp.tasks.vision.FaceLandmarkerOptions(
+                base_options=base_options,
+                running_mode=mp.tasks.vision.RunningMode.VIDEO,
+                num_faces=1,
+                min_face_detection_confidence=0.6,
+                min_face_presence_confidence=0.6,
                 min_tracking_confidence=0.6,
             )
+            self.face_landmarker = mp.tasks.vision.FaceLandmarker.create_from_options(options)
             self.samples = []
+            self.frame_timestamp = 0
             self.target = target
             self.output_dir = output_dir or "output"
             self.active = True
 
     def analyze_frame(self, image_bytes: bytes) -> dict:
         with self.lock:
-            if not self.active or self.face_mesh is None:
+            if not self.active or self.face_landmarker is None:
                 raise RuntimeError("Nenhum escaneamento ativo.")
 
             image = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
             if image is None:
                 raise ValueError("Não foi possível ler o frame da câmera.")
             height, width = image.shape[:2]
-            result = self.face_mesh.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-            detected = bool(result.multi_face_landmarks)
+            rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_image)
+            self.frame_timestamp += 1
+            result = self.face_landmarker.detect_for_video(mp_image, self.frame_timestamp)
+            detected = bool(result.face_landmarks)
             metrics = None
             if detected:
-                metrics = _extract_frame_metrics(result.multi_face_landmarks[0], width, height)
+                metrics = _extract_frame_metrics(result.face_landmarks[0], width, height)
                 if metrics is not None:
                     self.samples.append(metrics)
 
@@ -74,7 +84,7 @@ class ScannerSession:
             json_path, md_path = save_reports(metrics, self.output_dir)
             sliders = suggest_fc26_sliders(metrics)
             self.active = False
-            self._close_mesh()
+            self._close_landmarker()
             return {
                 "metrics": asdict(metrics),
                 "sliders": asdict(sliders),
@@ -85,12 +95,23 @@ class ScannerSession:
     def stop(self) -> None:
         with self.lock:
             self.active = False
-            self._close_mesh()
+            self._close_landmarker()
 
-    def _close_mesh(self) -> None:
-        if self.face_mesh is not None:
-            self.face_mesh.close()
-            self.face_mesh = None
+    def _close_landmarker(self) -> None:
+        if self.face_landmarker is not None:
+            self.face_landmarker.close()
+            self.face_landmarker = None
+
+
+def _ensure_face_model() -> Path:
+    model_path = Path(__file__).resolve().parent / "models" / "face_landmarker.task"
+    if not model_path.exists():
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        urlretrieve(
+            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
+            model_path,
+        )
+    return model_path
 
 
 session = ScannerSession()

@@ -48,8 +48,9 @@ def _landmark_to_px(landmark, frame_width: int, frame_height: int) -> tuple[floa
 
 def _extract_frame_metrics(face_landmarks, frame_width: int, frame_height: int) -> FaceMetrics | None:
     points: Dict[str, tuple[float, float]] = {}
+    landmarks = getattr(face_landmarks, "landmark", face_landmarks)
     for name, index in LANDMARKS.items():
-        lm = face_landmarks.landmark[index]
+        lm = landmarks[index]
         points[name] = _landmark_to_px(lm, frame_width, frame_height)
 
     interocular = distance(points["eye_left_outer"], points["eye_right_outer"])

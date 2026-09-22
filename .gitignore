@@ -4,6 +4,7 @@ __pycache__/
 venv/
 env/
 output/
+back/models/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
