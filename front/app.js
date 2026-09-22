@@ -50,6 +50,20 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
 }
 
+async function readApiResponse(response) {
+  const text = await response.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`O servidor respondeu com uma página HTML (${response.status}). Verifique o backend e tente novamente.`);
+  }
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || `Falha na API (${response.status}).`);
+  }
+  return data;
+}
+
 async function loadCameras() {
   try {
     const permission = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -112,8 +126,7 @@ async function startScanner() {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const response = await fetch('/api/session/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ samples, output_dir: outputInput.value.trim() }) });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Não foi possível iniciar.');
+    const data = await readApiResponse(response);
     setRunning(true);
     statusText.textContent = 'Procurando rosto e coletando proporções...';
     confidence.textContent = 'ANALISANDO';
@@ -137,8 +150,7 @@ function captureNextFrame() {
       const body = new FormData();
       body.append('frame', blob, 'frame.jpg');
       const response = await fetch('/api/session/frame', { method: 'POST', body });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Falha no processamento.');
+      const data = await readApiResponse(response);
       updateLive(data);
       if (data.count >= data.target) {
         await finishScanner();
@@ -165,8 +177,7 @@ function updateLive(data) {
 async function finishScanner() {
   try {
     const response = await fetch('/api/session/finish', { method: 'POST' });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Não foi possível concluir.');
+    const data = await readApiResponse(response);
     stopCamera();
     setRunning(false);
     renderResult(data);

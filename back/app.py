@@ -100,6 +100,16 @@ def create_app() -> Flask:
     front_dir = Path(__file__).resolve().parent.parent / "front"
     app = Flask(__name__, template_folder=str(front_dir), static_folder=str(front_dir), static_url_path="/assets")
 
+    @app.errorhandler(Exception)
+    def handle_api_error(error: Exception):
+        if request.path.startswith("/api/"):
+            app.logger.exception("Erro na API do scanner", exc_info=error)
+            return jsonify({
+                "ok": False,
+                "error": "Erro interno durante a análise. Verifique os logs do servidor.",
+            }), 500
+        raise error
+
     @app.get("/")
     def index():
         return render_template("index.html")
@@ -129,7 +139,7 @@ def create_app() -> Flask:
     def finish_session():
         try:
             return jsonify({"ok": True, **session.finish()})
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             return jsonify({"ok": False, "error": str(exc)}), 400
 
     @app.post("/api/session/stop")
